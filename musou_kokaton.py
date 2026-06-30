@@ -255,11 +255,43 @@ class Score:
         screen.blit(self.image, self.rect)
 
 
+class Life:
+    """
+    残機（ライフ）を表示するクラス
+    """
+    def __init__(self, num: int):
+        self.num = num
+        self.surfs = []
+        for _ in range(num):
+            surf = pg.Surface((40, 40))
+            surf.set_colorkey((0, 0, 0))
+            points = [(16*math.sin(t/100)**3 + 20,
+                       -(13*math.cos(t/100)-5*math.cos(2*t/100)
+                         -2*math.cos(3*t/100)-math.cos(4*t/100)) + 20)
+                      for t in range(0, 628)]
+            pg.draw.polygon(surf, (255, 0, 0), points)
+            self.surfs.append(surf)
+
+        # 右下に配置（最右ハートの重心が下から50, 右から50）
+        self.base_x = WIDTH - 50
+        self.base_y = HEIGHT - 50
+
+    def update(self, screen: pg.Surface):
+        """
+        現在の残機数に応じてハートを描画する
+        """
+        for i in range(self.num):
+            x = self.base_x - i * 50  # ハートを左に並べる
+            y = self.base_y
+            screen.blit(self.surfs[i], (x - 20, y - 20))  # 中心合わせ
+
+
 def main():
     pg.display.set_caption("真！こうかとん無双")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"fig/pg_bg.jpg")
     score = Score()
+    life = Life(3)
 
     bird = Bird(3, (900, 400))
     bombs = pg.sprite.Group()
@@ -306,11 +338,15 @@ def main():
                 exps.add(Explosion(bomb, 50)) # 爆弾エフェクト
                 score.value += 1 # 1点アップ
             else:
+                life.num -= 1 # ライフを1減らす
                 bird.change_img(8, screen)  # こうかとん悲しみエフェクト
                 score.update(screen)
+                life.update(screen)
                 pg.display.update()
                 time.sleep(2)
-                return
+
+                if life.num <= 0:
+                    return # ライフが尽きたらゲーム終了
 
         bird.update(key_lst, screen)
         beams.update()
@@ -322,6 +358,7 @@ def main():
         exps.update()
         exps.draw(screen)
         score.update(screen)
+        life.update(screen)
         pg.display.update()
         tmr += 1
         clock.tick(50)
