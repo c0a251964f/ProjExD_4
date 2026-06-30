@@ -245,7 +245,7 @@ class Score:
     def __init__(self):
         self.font = pg.font.Font(None, 50)
         self.color = (0, 0, 255)
-        self.value = 0
+        self.value = 500
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         self.rect = self.image.get_rect()
         self.rect.center = 100, HEIGHT-50
@@ -254,6 +254,28 @@ class Score:
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         screen.blit(self.image, self.rect)
 
+class Gravity(pg.sprite.Sprite):
+    """
+    重力場に関するクラス
+    """
+    def __init__(self, life=400):
+        """
+        重力場を発生させる。
+        指定された範囲を暗くする。
+        """
+        super().__init__()
+        self.life = life
+
+        self.image = pg.Surface((WIDTH, HEIGHT))
+        pg.draw.rect(self.image, (0, 0, 0), (0, 0, WIDTH, HEIGHT))
+        self.image.set_alpha(180)
+
+        self.rect = self.image.get_rect()
+
+    def update(self):
+        self.life -= 1
+        if self.life < 0:
+            self.kill()
 
 class Life:
     """
@@ -298,6 +320,7 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
+    gravitys = pg.sprite.Group()
 
     tmr = 0
     clock = pg.time.Clock()
@@ -314,6 +337,10 @@ def main():
                     bird.state = "hyper"
                     bird.hyper_life = 500
                     score.value -= 100
+            if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
+                if score.value >= 200:
+                    score.value -= 200
+                    gravitys.add(Gravity(400))
         screen.blit(bg_img, [0, 0])
 
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
@@ -347,7 +374,20 @@ def main():
 
                 if life.num <= 0:
                     return # ライフが尽きたらゲーム終了
+        
+        for grav in gravitys:
+            # 爆弾の除去
+            for bomb in pg.sprite.spritecollide(grav, bombs, True):
+                exps.add(Explosion(bomb, 50))
+                score.value += 1
 
+            # 敵機の除去
+            for emy in pg.sprite.spritecollide(grav, emys, True):
+                exps.add(Explosion(emy, 100))
+                score.value += 10
+
+        gravitys.update()
+        gravitys.draw(screen)
         bird.update(key_lst, screen)
         beams.update()
         beams.draw(screen)
